@@ -437,6 +437,14 @@ class PosixWritableFile final : public WritableFile {
 };
 
 int LockOrUnlock(int fd, bool lock) {
+        // It seems Android OS does not behave very well
+        // and a very few cases the LOCK leaks even though the process
+        // is already dead (or the process lives forever, even though a new
+        // app process is spawned. We are delegating process wide lock to be handled
+        // by the managed code in Dalvik.
+#ifdef OS_ANDROID
+  return 0;
+#else
   errno = 0;
   struct ::flock file_lock_info;
   std::memset(&file_lock_info, 0, sizeof(file_lock_info));
@@ -445,6 +453,7 @@ int LockOrUnlock(int fd, bool lock) {
   file_lock_info.l_start = 0;
   file_lock_info.l_len = 0;  // Lock/unlock entire file.
   return ::fcntl(fd, F_SETLK, &file_lock_info);
+#endif
 }
 
 // Instances are thread-safe because they are immutable.
